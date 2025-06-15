@@ -1,5 +1,6 @@
 import logo from "@/public/logo.svg";
 import Image from "next/image";
+import backgroundImage from "@/public/background.jpg";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@radix-ui/react-avatar";
 import {
@@ -27,7 +28,16 @@ const Hero = () => {
 
   return (
     <div className="relative w-full h-[50vh] flex flex-col justify-start items-beetwen">
-      <div className="absolute inset-0 bg-cover bg-center bg-[url(@/public/bg-image.jpg)]"></div>
+      <div className="absolute inset-0 bg-cover bg-center ">
+        <Image
+          src={backgroundImage}
+          alt="Background"
+          layout="fill"
+          objectFit="cover"
+          quality={100}
+          className="absolute z-0"
+        />
+      </div>
 
       <div className="absolute inset-0 bg-[#2563EBDB]"></div>
 

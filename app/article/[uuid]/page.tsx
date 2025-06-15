@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import logo from "@/public/logo.svg";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import axios from "axios";
 
 interface ArticleDetail {
@@ -152,7 +152,7 @@ export default function ArticlePreviewPage() {
 
         {article.image_url && (
           <div className="w-full h-auto relative mb-8 rounded-lg overflow-hidden flex justify-center">
-            <img
+            <Image
               src={article.image_url}
               alt={article.title}
               className="object-cover w-full"
@@ -191,7 +191,7 @@ export default function ArticlePreviewPage() {
               <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
                 {related.image_url ? (
                   <div className="w-full h-40 relative">
-                    <img
+                    <Image
                       src={related.image_url}
                       alt={related.title}
                       className="object-cover"

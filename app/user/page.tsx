@@ -10,6 +10,7 @@ export default function UserDashboardPage() {
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  console.log("🚀 ~ UserDashboardPage ~ username:", username);
 
   useEffect(() => {
     const accessToken = localStorage.getItem("userAccessToken");

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 interface Article {
   article_id: string;
@@ -23,6 +24,7 @@ const ListArticle = () => {
     setLoading(true);
     setApiError(null);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await axios.get<any>(
         nextpage === null
           ? "https://newsdata.io/api/1/latest?apikey=pub_af7049a35bf8419abf3feaca8ca639aa&q=tech"
@@ -50,6 +52,7 @@ const ListArticle = () => {
 
   useEffect(() => {
     fetchArticles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading && articles.length === 0) {
@@ -83,11 +86,12 @@ const ListArticle = () => {
               >
                 <div className="w-full h-48 rounded-2xl overflow-hidden bg-gray-200">
                   {article.image_url ? (
-                    <img
+                    <Image
                       className="w-full h-full object-cover min-w-full max-w-full"
                       src={article.image_url}
                       alt={article.title || "Article Image"}
                       loading="lazy"
+                      fill
                     />
                   ) : (
                     <div className="flex justify-center items-center w-full h-full text-gray-500">
