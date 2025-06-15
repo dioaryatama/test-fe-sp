@@ -1,20 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   FaBars,
   FaTimes,
-  FaRegUser,
   FaNewspaper,
   FaBoxes,
   FaSignOutAlt,
   FaSearch,
   FaPlus,
-  FaEye,
-  FaEdit,
-  FaTrashAlt,
 } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,8 +29,7 @@ import {
   PaginationLink,
 } from "@/components/ui/pagination";
 import logo from "@/public/logo.svg";
-import axios from "axios";
-import { Link } from "lucide-react";
+import axios, { AxiosResponse } from "axios";
 
 interface Article {
   uuid: string;
@@ -45,10 +40,21 @@ interface Article {
   url: string;
 }
 
+interface TheNewsApiData {
+  data: Article[];
+  meta: {
+    found: number;
+    returned: number;
+    limit: number;
+    page: number;
+  };
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  console.log("🚀 ~ AdminDashboardPage ~ userRole:", userRole);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -62,36 +68,39 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
 
-  const fetchArticles = async (page: number, query: string = searchQuery) => {
-    setLoadingArticles(true);
-    setArticlesApiError(null);
-    try {
-      const API_KEY = "fUOrZvd2NrGxt9WoIzqt3lNdNttFuinyCbXuHXl9";
-      let url = `https://api.thenewsapi.com/v1/news/top?api_token=${API_KEY}&limit=${ARTICLES_PER_PAGE}&page=${page}`;
-      if (query) {
-        url += `&search=${encodeURIComponent(query)}`;
+  const fetchArticles = useCallback(
+    async (page: number, query: string = searchQuery) => {
+      setLoadingArticles(true);
+      setArticlesApiError(null);
+      try {
+        const API_KEY = "fUOrZvd2NrGxt9WoIzqt3lNdNttFuinyCbXuHXl9";
+        let url = `https://api.thenewsapi.com/v1/news/top?api_token=${API_KEY}&locale=us&limit=${ARTICLES_PER_PAGE}&page=${page}`;
+        if (query) {
+          url += `&search=${encodeURIComponent(query)}`;
+        }
+        const response: AxiosResponse<TheNewsApiData> = await axios.get(url);
+        setArticles(response.data.data);
+        setTotalArticles(response.data.meta.found);
+        setCurrentPage(page);
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setArticlesApiError(err.message);
+          console.error(
+            "Error fetching articles:",
+            err.response?.data || err.message
+          );
+        } else {
+          setArticlesApiError(
+            "Terjadi kesalahan yang tidak diketahui saat mengambil artikel."
+          );
+          console.error("Unexpected error fetching articles:", err);
+        }
+      } finally {
+        setLoadingArticles(false);
       }
-      const response = await axios.get(url);
-      setArticles(response.data.data);
-      setTotalArticles(response.data.meta.found);
-      setCurrentPage(page);
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setArticlesApiError(err.message);
-        console.error(
-          "Error fetching articles:",
-          err.response?.data || err.message
-        );
-      } else {
-        setArticlesApiError(
-          "Terjadi kesalahan yang tidak diketahui saat mengambil artikel."
-        );
-        console.error("Unexpected error fetching articles:", err);
-      }
-    } finally {
-      setLoadingArticles(false);
-    }
-  };
+    },
+    [searchQuery]
+  );
 
   useEffect(() => {
     const accessToken = localStorage.getItem("userAccessToken");
@@ -111,7 +120,7 @@ export default function AdminDashboardPage() {
       setUsername(storedUsername);
       setUserRole(storedRole);
       setIsCheckingSession(false);
-      fetchArticles(1, searchQuery);
+      fetchArticles(1);
     }
 
     return () => {
@@ -119,7 +128,7 @@ export default function AdminDashboardPage() {
         clearTimeout(searchTimer);
       }
     };
-  }, [router, searchQuery]);
+  }, [router, fetchArticles, searchTimer, searchQuery]);
 
   const handleLogout = () => {
     localStorage.removeItem("userAccessToken");
@@ -150,7 +159,7 @@ export default function AdminDashboardPage() {
     const maxPagesToShow = 5;
     const pages = [];
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
     if (endPage - startPage + 1 < maxPagesToShow) {
       startPage = Math.max(1, endPage - maxPagesToShow + 1);
@@ -321,10 +330,7 @@ export default function AdminDashboardPage() {
               <h2 className="text-md font-medium text-gray-700">
                 Total Articles : {loadingArticles ? "Memuat..." : totalArticles}
               </h2>
-              <Button
-                onClick={() => router.push("/article/create")}
-                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-              >
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
                 <FaPlus size={14} />
                 Add Articles
               </Button>
@@ -391,7 +397,7 @@ export default function AdminDashboardPage() {
                       >
                         <td className="py-3 px-4">
                           {article.image_url ? (
-                            <img
+                            <Image
                               src={article.image_url}
                               alt="Thumbnail"
                               width={60}
@@ -427,7 +433,7 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-3 px-4 flex items-center justify-center space-x-2">
                           <a
-                            href={`/article/${article.uuid}`}
+                            href={article.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:underline flex items-center gap-1 text-sm"
