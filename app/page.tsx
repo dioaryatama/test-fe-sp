@@ -1,103 +1,205 @@
+"use client";
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import logo from "@/public/logo.svg";
+import Link from "next/link";
+import { FaRegEyeSlash } from "react-icons/fa";
+import axios from "axios";
 
-export default function Home() {
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { loginSchema, LoginFormValue } from "./schemas/auth";
+
+import { useRouter } from "next/navigation";
+
+interface LoginResponse {
+  id: number;
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface UserDetailResponse {
+  id: number;
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  role: string;
+}
+
+export default function Login() {
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<LoginFormValue>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  });
+
+  const handleLogin = async (data: LoginFormValue) => {
+    setApiError(null);
+    setLoading(true);
+    console.log("Mencoba login dengan data:", data);
+
+    try {
+      const loginResponse = await axios.post<LoginResponse>(
+        "https://dummyjson.com/auth/login",
+        {
+          username: data.username,
+          password: data.password,
+        }
+      );
+
+      const loggedInUser = loginResponse.data;
+      console.log("Login berhasil! Data pengguna:", loggedInUser);
+
+      if (loggedInUser.accessToken) {
+        localStorage.setItem("userAccessToken", loggedInUser.accessToken);
+        localStorage.setItem("userRefreshToken", loggedInUser.refreshToken);
+        localStorage.setItem("userUsername", loggedInUser.username);
+
+        const userDetailResponse = await axios.get<UserDetailResponse>(
+          `https://dummyjson.com/users/${loggedInUser.id}`
+        );
+        const userRole = userDetailResponse.data.role;
+
+        localStorage.setItem("userRole", userRole);
+
+        alert(
+          `Login berhasil! Selamat datang, ${loggedInUser.username} (${userRole}).`
+        );
+
+        if (userRole === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/user");
+        }
+      } else {
+        setApiError(
+          "Login berhasil, tetapi access token tidak ditemukan di respons."
+        );
+      }
+
+      reset();
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setApiError(
+          err.response?.data?.message || "Login gagal. Silakan coba lagi."
+        );
+        console.error("Login error:", err.response?.data);
+      } else {
+        setApiError("Terjadi kesalahan saat login.");
+        console.error("Unexpected login error:", err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("userAccessToken");
+    const role = localStorage.getItem("userRole");
+
+    if (accessToken && role) {
+      if (role === "admin") {
+        router.replace("/admin");
+      } else {
+        router.replace("/user");
+      }
+    }
+    setLoading(false);
+  }, [router]);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
+    <div className="flex justify-center items-center h-screen w-screen bg-slate-100">
+      <div className="w-full md:w-1/5 h-full md:h-auto bg-white shadow-2xl py-8 px-4 rounded-2xl flex flex-col gap-4 items-center justify-center">
         <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+          className="relative object-cover"
+          width={134}
+          height={24}
+          alt=""
+          src={logo}
+        ></Image>
+        <form
+          onSubmit={handleSubmit(handleLogin)}
+          className="w-full flex flex-col gap-4"
+        >
+          <div className="w-full">
+            <p className="text-sm font-medium text-gray-900">Username</p>
+            <Input
+              id="username"
+              placeholder="Input username"
+              {...register("username")}
+              className={errors.username ? "border-red-500" : ""}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {errors.username && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors.username.message}
+              </p>
+            )}
+          </div>
+          <div className="w-full">
+            <p className="text-sm font-medium text-gray-900">Password</p>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Input password"
+                className={`pr-10 ${errors.password ? "border-red-500" : ""}`}
+                {...register("password")}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute bottom-1 right-1 h-7 w-7"
+                onClick={() => setShowPassword(!showPassword)}
+                type="button"
+              >
+                <FaRegEyeSlash className="h-4 w-4" />
+              </Button>
+            </div>
+            {errors.password && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors.password.message}
+              </p>
+            )}
+          </div>
+          <Button
+            type="submit"
+            className="bg-blue-600 w-full"
+            disabled={isSubmitting || loading}
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            {loading ? "Loading..." : "Login"}
+          </Button>
+          {apiError && (
+            <p className="text-red-500 text-sm text-center">{apiError}</p>
+          )}
+        </form>
+        <p className="text-sm font-normal">
+          Don't have an account?{" "}
+          <Link className="underline text-blue-600" href="/regist">
+            Register
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }
