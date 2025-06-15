@@ -31,10 +31,6 @@ const ListArticle = () => {
 
       setArticles(response.data.results);
       setNextpage(response.data.nextPage);
-      console.log(
-        "🚀 ~ fetchArticles ~ response.data.nextPage:",
-        response.data.nextPage
-      );
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setApiError(err.message);
